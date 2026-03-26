@@ -18,4 +18,4 @@ For each piece of feedback:
 
 Continue this process until you have addressed all feedback, and there are no outstanding comments on the pull request. If you have any questions or need clarification on any feedback, ask for it in the pull request comments.
 
-Commit your changes and push to update the pull request.
+Ensure tests, linting and build are passing locally, then commit your changes and push to update the pull request.

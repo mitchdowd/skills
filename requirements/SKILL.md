@@ -1,15 +1,13 @@
 ---
-name: spec
-description: Create a requirements-level project specification or "spec" outlining module design, feature requirements and codebase decisions, then create the spec as a single document. Use when the user wants to create project documentation, write a "spec", or plan a new feature.
+name: requirements
+description: Create a project requirements document outlining module design, feature requirements and codebase decisiont.
 argument-hint: Give detailed project requirement information
-user-invocable: true
-disable-model-invocation: false
 ---
 
-This skill will be invoked when the user wants to create a project requirements specification. You may skip steps if you don't consider them necessary.
+This skill will be invoked when the user wants to create a project requirements document. You may skip steps if you don't consider them necessary.
 
 1. Ask the user where they would prefer the document be saved, with suggested options of:
-  - `.specs` folder in the root of the repo (recommended)
+  - `docs` folder in the root of the repo (recommended)
   - Confluence. If selected, confirm the Confluence location, and verify either MCP or CLI access to Confluence. If no access, inform the user and halt.
   - Github Issues. If selected, verify access via either MCP or CLI. If no access, inform the user and halt.
   - Other. Allow the user to specify where and how they would like the document saved.

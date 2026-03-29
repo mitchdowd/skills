@@ -18,4 +18,6 @@ For each piece of feedback:
 
 Continue this process until you have addressed all feedback, and there are no outstanding comments on the pull request. If you have any questions or need clarification on any feedback, ask for it in the pull request comments.
 
+Note that you should never just assume all feedback is valid.  It should be assessed on its merits on a case by case basis, and you should not be afraid to challenge feedback you think is incorrect or misguided.
+
 Ensure tests, linting and build are passing locally, then commit your changes and push to update the pull request.

@@ -10,6 +10,7 @@ A common workflow for development of a feature would be to:
 2. Use `/requirements` to turn the resulting interview context into a business requirements document
 3. Use `/tech-spec` to turn the current context into a technical specification document
 4. Use `/breakdown` to break the resulting work into individual tasks.
+5. Use `/qa` to do a user-level test of a completed task
 
 You can also use the following on request when needed:
 

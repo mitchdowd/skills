@@ -7,12 +7,14 @@ This is my current profile-level agent skills, kept in `%USERPROFILE%\.agents\sk
 A common workflow for development of a feature would be to:
 
 1. Use `/interview` with the initial feature request text to help with requirements gathering.
-2. Use `/spec` to turn the resulting interview context into a specification document.
-3. Use `/breakdown` to break the resulting work into individual tasks.
+2. Use `/requirements` to turn the resulting interview context into a business requirements document
+3. Use `/tech-spec` to turn the current context into a technical specification document
+4. Use `/breakdown` to break the resulting work into individual tasks.
 
 You can also use the following on request when needed:
 
 - Use `/language` to extract update language/glossary terminology based on the current conversation
+- Use `/update-pr` to read and action any comments on a Github pull request
 
 ## Credits
 

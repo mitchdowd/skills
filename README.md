@@ -14,5 +14,6 @@ A common workflow for development of a feature would be to:
 
 You can also use the following on request when needed:
 
+- Use `/jira` to manage Jira work through a local Atlassian CLI installation
 - Use `/language` to extract update language/glossary terminology based on the current conversation
 - Use `/update-pr` to read and action any comments on a Github pull request

@@ -6,16 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./acli-common.sh
 source "$SCRIPT_DIR/acli-common.sh"
 
-LOGIN=0
-STATUS_ONLY=1
-
 while [ "$#" -gt 0 ]; do
 	case "$1" in
-		--login)
-			LOGIN=1
-			STATUS_ONLY=0
-			shift
-			;;
 		--site)
 			require_arg "site" "${2:-}"
 			set_jira_site "$2"
@@ -33,12 +25,8 @@ while [ "$#" -gt 0 ]; do
 done
 
 ensure_acli
+login_auth
 
-if [ "$LOGIN" -eq 1 ]; then
-	login_auth
-	if [ "$QUIET" -ne 1 ]; then
-		printf 'Jira auth ready.\n'
-	fi
-elif [ "$STATUS_ONLY" -eq 1 ]; then
-	auth_status
+if [ "$QUIET" -ne 1 ]; then
+	printf 'Jira auth ready.\n'
 fi

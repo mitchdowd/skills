@@ -7,9 +7,17 @@ SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WINDOWS_BIN_DIR="$SKILL_DIR/bin/windows"
 WINDOWS_BIN="$WINDOWS_BIN_DIR/acli.exe"
 ACLI_BIN=""
+JIRA_SITE="${JIRA_SITE:-${ACLI_JIRA_SITE:-}}"
+QUIET="${QUIET:-0}"
 
 log() {
   printf '%s\n' "$*" >&2
+}
+
+info() {
+  if [ "$QUIET" -ne 1 ]; then
+    log "$@"
+  fi
 }
 
 is_windows_shell() {
@@ -40,7 +48,7 @@ download_windows_acli() {
   url="https://acli.atlassian.com/windows/latest/acli_windows_${arch}/acli.exe"
 
   mkdir -p "$WINDOWS_BIN_DIR"
-  log "Downloading Atlassian CLI to $WINDOWS_BIN"
+  info "Downloading Atlassian CLI to $WINDOWS_BIN"
 
   if command -v powershell.exe >/dev/null 2>&1; then
     powershell.exe -NoProfile -Command "Invoke-WebRequest -Uri '$url' -OutFile '$WINDOWS_BIN'" >/dev/null
@@ -85,23 +93,62 @@ ensure_acli() {
   return 1
 }
 
-ensure_auth() {
-  if "$ACLI_BIN" jira auth status >/dev/null 2>&1; then
+auth_status() {
+  ensure_acli
+  "$ACLI_BIN" jira auth status
+}
+
+auth_status_quiet() {
+  ensure_acli
+  "$ACLI_BIN" jira auth status >/dev/null 2>&1
+}
+
+require_auth() {
+  ensure_acli
+
+  if auth_status_quiet; then
     return 0
   fi
 
-  log "No Jira authentication is configured. Starting interactive login."
-  "$ACLI_BIN" jira auth login
-  "$ACLI_BIN" jira auth status >/dev/null
+  log "No Jira authentication is configured. Run '$ACLI_BIN jira auth login --web' and retry the original command."
+  return 1
+}
+
+login_auth() {
+  local login_args
+
+  ensure_acli
+  login_args=(jira auth login)
+
+  if [ -n "$JIRA_SITE" ]; then
+    login_args+=(--site "$JIRA_SITE")
+  fi
+
+  login_args+=(--web)
+  info "Starting Jira web login${JIRA_SITE:+ for $JIRA_SITE}."
+  "$ACLI_BIN" "${login_args[@]}" >/dev/null
+
+  if ! auth_status_quiet; then
+    log "Jira authentication did not complete successfully."
+    return 1
+  fi
 }
 
 ensure_ready() {
   ensure_acli
-  ensure_auth
+}
+
+set_jira_site() {
+  JIRA_SITE="$1"
+}
+
+set_quiet() {
+  QUIET="$1"
 }
 
 run_acli() {
-  ensure_ready
+  ensure_acli
+  require_auth
   "$ACLI_BIN" "$@"
 }
 
@@ -116,7 +163,8 @@ run_acli_json() {
     fi
   done
 
-  ensure_ready
+  ensure_acli
+  require_auth
 
   if [ "$has_json" -eq 1 ]; then
     "$ACLI_BIN" "$@"

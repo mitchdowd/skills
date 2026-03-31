@@ -2,6 +2,8 @@
 
 Prefer JSON output whenever the result needs to be inspected, filtered, or reused.
 
+Exception: `acli jira auth status` is plain text and should be handled by exit code plus human-readable output.
+
 ## Default output mode
 
 Use `--json` by default for:

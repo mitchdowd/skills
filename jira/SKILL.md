@@ -15,11 +15,16 @@ Use this skill for Jira work through a local Atlassian CLI installation. Prefer 
 1. Ensure a usable CLI is available. Start with `templates/setup-acli.sh` if needed.
 2. Prefer `acli` from `PATH` when present.
 3. On Windows, if `acli` is missing, download a managed copy to `bin/windows/acli.exe`.
-4. Check authentication with `acli jira auth status`.
-5. If authentication is missing, run `acli jira auth login` and wait for the interactive browser login to complete.
-6. Prefer `--json` for commands whose output will be inspected or transformed.
-7. Normalize Jira language internally: issue, ticket, story, bug, and epic should map onto ACLI `workitem` operations.
-8. Default all mutation commands to a single explicit work item key unless the prompt clearly asks for bulk targeting.
+4. On Windows, prefer invoking the managed binary directly from PowerShell: `& ".\\bin\\windows\\acli.exe" ...`.
+5. Check authentication with plain `acli jira auth status`.
+6. Do not assume auth commands support `--json`; inspect their plain-text exit status and output.
+7. If authentication is missing, prefer `templates/auth-login.sh --quiet --site "<site>"` when the site is known. Otherwise run `acli jira auth login --web`, then wait for the interactive browser flow to complete before continuing.
+8. After login completes, rerun `acli jira auth status` and only then run the original Jira command.
+9. Prefer `--json` for commands whose output will be inspected or transformed.
+10. Normalize Jira language internally: issue, ticket, story, bug, and epic should map onto ACLI `workitem` operations.
+11. Default all mutation commands to a single explicit work item key unless the prompt clearly asks for bulk targeting.
+12. Keep auth-related user updates minimal: one short note before login starts, then continue silently unless login fails or requires user action.
+13. Avoid using a background terminal for normal auth unless there is a concrete need to keep working in parallel.
 
 ## Supported operations
 
@@ -64,6 +69,7 @@ Use direct ACLI commands for straightforward reads and single-step mutations.
 
 ```bash
 acli jira workitem search --jql "project = TEAM AND status = 'To Do'" --json
+acli jira workitem search --jql "assignee = currentUser() ORDER BY updated DESC" --json
 acli jira workitem view TEAM-123 --json
 acli jira workitem create --project TEAM --type Story --summary "Add API retries" --json
 acli jira workitem assign --key TEAM-123 --assignee "@me" --json
@@ -81,7 +87,8 @@ For complex create or edit requests, use `--from-json` instead of trying to forc
 
 ## Templates
 
-- `templates/setup-acli.sh`: resolves `acli`, installs a managed Windows copy if needed, and verifies auth.
+- `templates/setup-acli.sh`: resolves `acli`, installs a managed Windows copy if needed, and reports auth status without starting login unless `--login` is passed. Supports `--site` and `--quiet`.
+- `templates/auth-login.sh`: explicit interactive login helper that starts browser auth and verifies success. Supports `--site` and `--quiet`.
 - `templates/workitem-search.sh`: deterministic work item search wrapper with JSON output.
 - `templates/workitem-create.sh`: deterministic create wrapper for common fields plus `--from-json`.
 - `templates/workitem-update.sh`: deterministic single-work-item wrapper for view, assign, comment, attachment, edit, link, transition, and clone.
@@ -91,4 +98,6 @@ For complex create or edit requests, use `--from-json` instead of trying to forc
 
 - Use the documented commands and templates in this skill as the first choice for covered Jira work.
 - Keep outputs structured unless the user explicitly asks for a quick human-readable command or browser view.
+- Do not treat a pending interactive login as task completion. Resume the original Jira operation after auth succeeds.
 - When a request needs a Jira object lookup before a mutation, search or view first, then mutate.
+- Prefer known-site login to avoid an extra site-selection step.

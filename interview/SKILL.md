@@ -6,7 +6,7 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
-Interview me thoroughly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+Interview me thoroughly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide one or more numbered, sorted recommendations to choose from, or allow a free-form answer.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
 

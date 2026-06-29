@@ -5,11 +5,15 @@
 
 .DESCRIPTION
     Copies every directory containing a SKILL.md from this folder into
-    $env:USERPROFILE\.claude\skills\. Safe to re-run: a manifest file tracks
-    which skills claudify installed, so re-runs reflect source deletions
-    without disturbing skills installed by other means.
+    $env:USERPROFILE\.claude\skills\ so Claude has an up-to-date copy of each
+    skill. Safe to re-run: existing files are overwritten in place.
 
-    Collision policy: overwrite always.
+    This script NEVER deletes skills. It only creates or overwrites files so the
+    destination contains an equivalent copy of every source skill. Skills present
+    only in the destination (installed by other means, or removed from source)
+    are left untouched.
+
+    Collision policy: overwrite individual files; never remove directories.
 #>
 
 [CmdletBinding()]
@@ -20,7 +24,6 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ManifestName = '.claudified'
 
 function Get-SourceSkills {
     param([string]$Root)
@@ -29,18 +32,79 @@ function Get-SourceSkills {
         ForEach-Object { $_.Name }
 }
 
-function Remove-SkillTarget {
-    param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) { return }
+# True only when the destination file exists and already matches the source
+# byte-for-byte. Lets us skip files that don't need updating (including ones
+# that may be locked by another process).
+function Test-FilesIdentical {
+    param([string]$A, [string]$B)
+    if (-not (Test-Path -LiteralPath $B)) { return $false }
+    $ia = Get-Item -LiteralPath $A -Force
+    $ib = Get-Item -LiteralPath $B -Force
+    if ($ia.Length -ne $ib.Length) { return $false }
+    $ha = (Get-FileHash -LiteralPath $A -Algorithm SHA256).Hash
+    $hb = (Get-FileHash -LiteralPath $B -Algorithm SHA256).Hash
+    return $ha -eq $hb
+}
 
-    # Handle symlinks/junctions: Remove-Item -Recurse follows them on older
-    # PowerShell. Detect reparse points and unlink without recursing.
-    $item = Get-Item -LiteralPath $Path -Force
-    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        # Use .NET to delete the link itself, not its target.
-        [IO.Directory]::Delete($Path)
-    } else {
-        Remove-Item -LiteralPath $Path -Recurse -Force
+# Copy one file, retrying briefly if the destination is locked by another
+# process (e.g. Claude Code holding SKILL.md open).
+function Copy-FileWithRetry {
+    param(
+        [string]$From,
+        [string]$To,
+        [int]$Retries = 3,
+        [int]$DelayMs = 400
+    )
+    for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+        try {
+            Copy-Item -LiteralPath $From -Destination $To -Force
+            return $true
+        } catch [System.IO.IOException] {
+            if ($attempt -eq $Retries) {
+                Write-Warning "Skipped (in use): $To"
+                return $false
+            }
+            Start-Sleep -Milliseconds $DelayMs
+        }
+    }
+}
+
+# Copy a skill's contents into the destination, overwriting existing files but
+# never deleting anything that is already there.
+function Copy-SkillTree {
+    param(
+        [string]$SourceDir,
+        [string]$DestDir,
+        [switch]$DryRun
+    )
+
+    if (-not $DryRun -and -not (Test-Path -LiteralPath $DestDir)) {
+        New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+    }
+
+    $srcRoot = (Resolve-Path -LiteralPath $SourceDir).Path
+
+    Get-ChildItem -LiteralPath $SourceDir -Recurse -Force | ForEach-Object {
+        $relative = $_.FullName.Substring($srcRoot.Length).TrimStart('\', '/')
+        $target   = Join-Path $DestDir $relative
+
+        if ($_.PSIsContainer) {
+            if (-not $DryRun -and -not (Test-Path -LiteralPath $target)) {
+                New-Item -ItemType Directory -Path $target -Force | Out-Null
+            }
+        } else {
+            # Skip files that are already identical — avoids touching locked
+            # files that don't need updating in the first place.
+            if (Test-FilesIdentical -A $_.FullName -B $target) { return }
+
+            if (-not $DryRun) {
+                $parent = Split-Path -Parent $target
+                if (-not (Test-Path -LiteralPath $parent)) {
+                    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+                }
+                Copy-FileWithRetry -From $_.FullName -To $target | Out-Null
+            }
+        }
     }
 }
 
@@ -54,58 +118,24 @@ if (-not (Test-Path -LiteralPath $Destination)) {
     }
 }
 
-$manifestPath = Join-Path $Destination $ManifestName
-$previousSkills = @()
-if (Test-Path -LiteralPath $manifestPath) {
-    $previousSkills = Get-Content -LiteralPath $manifestPath |
-        Where-Object { $_ -and -not $_.StartsWith('#') } |
-        ForEach-Object { $_.Trim() }
-}
-
 $currentSkills = @(Get-SourceSkills -Root $Source)
 if ($currentSkills.Count -eq 0) {
     Write-Warning "No skills (directories containing SKILL.md) found under $Source"
 }
 
-# 1. Remove skills that were previously claudified but no longer exist in source.
-$stale = $previousSkills | Where-Object { $_ -notin $currentSkills }
-foreach ($name in $stale) {
-    $target = Join-Path $Destination $name
-    if (Test-Path -LiteralPath $target) {
-        Write-Host "Removing stale skill: $name"
-        if (-not $WhatIfOnly) { Remove-SkillTarget -Path $target }
-    }
-}
-
-# 2. Copy each current skill, overwriting anything in the way.
+# Copy each current skill, overwriting files in place. Nothing is ever deleted.
 foreach ($name in $currentSkills) {
     $src = Join-Path $Source $name
     $dst = Join-Path $Destination $name
 
     if (Test-Path -LiteralPath $dst) {
-        Write-Host "Replacing: $name"
-        if (-not $WhatIfOnly) { Remove-SkillTarget -Path $dst }
+        Write-Host "Updating: $name"
     } else {
         Write-Host "Installing: $name"
     }
 
-    if (-not $WhatIfOnly) {
-        Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
-    }
-}
-
-# 3. Write the manifest so the next run knows what we own.
-if (-not $WhatIfOnly) {
-    $header = @(
-        '# Skills installed by claudify.ps1. Do not edit manually.',
-        "# Source: $Source",
-        "# Updated: $(Get-Date -Format o)"
-    )
-    ($header + $currentSkills) | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+    Copy-SkillTree -SourceDir $src -DestDir $dst -DryRun:$WhatIfOnly
 }
 
 Write-Host ""
 Write-Host "Done. $($currentSkills.Count) skill(s) synced to $Destination"
-if ($stale.Count -gt 0) {
-    Write-Host "Removed $($stale.Count) stale skill(s): $($stale -join ', ')"
-}

@@ -16,6 +16,8 @@ For each piece of feedback:
 3. If the feedback is invalid, leave a reply to the pull request comment with your counter-argument or any clarifying questions you might have
 4. If the feedback came from this context instead of a pull request comment, action as above except leave your reply in the conversation instead of the pull request comment
 
+For any comments you leave directly on the pull request, leave a "updated by <agent-name>" footnote in the comment to indicate it is AI-generated.
+
 Continue this process until you have addressed all feedback, and there are no outstanding comments on the pull request. If you have any questions or need clarification on any feedback, ask for it in the pull request comments.
 
 Note that you should never just assume all feedback is valid.  It should be assessed on its merits on a case by case basis, and you should not be afraid to challenge feedback you think is incorrect or misguided.
